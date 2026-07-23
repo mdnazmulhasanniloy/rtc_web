@@ -1,0 +1,47 @@
+
+> dev
+> concurrently "npm run dev:web" "npm run dev:server"
+
+[0] 
+[0] > dev:web
+[0] > next dev -H 0.0.0.0
+[0] 
+[1] 
+[1] > dev:server
+[1] > tsx watch server/index.ts
+[1] 
+[1] node:events:487
+[1]       throw er; // Unhandled 'error' event
+[1]       ^
+[1] 
+[1] Error: listen EADDRINUSE: address already in use 0.0.0.0:4000
+[1]     at Server.setupListenHandle [as _listen2] (node:net:2008:16)
+[1]     at listenInCluster (node:net:2065:12)
+[1]     at node:net:2274:7
+[1]     at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+[1] Emitted 'error' event on Server instance at:
+[1]     at emitErrorNT (node:net:2044:8)
+[1]     at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+[1]   code: 'EADDRINUSE',
+[1]   errno: -4091,
+[1]   syscall: 'listen',
+[1]   address: '0.0.0.0',
+[1]   port: 4000
+[1] }
+[1] 
+[1] Node.js v24.15.0
+[0]    ▲ Next.js 15.5.20
+[0]    - Local:        http://localhost:3000
+[0]    - Network:      http://0.0.0.0:3000
+[0]    - Environments: .env
+[0] 
+[0]  ✓ Starting...
+[0]  ✓ Ready in 1527ms
+[0]  ○ Compiling / ...
+[0]  ✓ Compiled / in 1275ms (1499 modules)
+[0]  GET / 200 in 1603ms
+[0]  ⚠ Cross origin request detected from 103.186.20.117 to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+[0] Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+[0]  ✓ Compiled in 1884ms (1513 modules)
+[0]  GET / 200 in 221ms
+[0]  GET / 200 in 32ms

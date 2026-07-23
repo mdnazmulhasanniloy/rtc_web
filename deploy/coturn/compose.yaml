@@ -1,0 +1,23 @@
+services:
+  coturn:
+    image: coturn/coturn:latest
+    container_name: relay-coturn
+    restart: unless-stopped
+    ports:
+      - "3478:3478/tcp"
+      - "3478:3478/udp"
+      - "49160-49200:49160-49200/udp"
+    command:
+      - --fingerprint
+      - --use-auth-secret
+      - --static-auth-secret=${TURN_SHARED_SECRET}
+      - --realm=turn.chat.nazmulhasan.dev
+      - --server-name=turn.chat.nazmulhasan.dev
+      - --external-ip=172.252.13.8
+      - --listening-port=3478
+      - --min-port=49160
+      - --max-port=49200
+      - --no-multicast-peers
+      - --no-cli
+      - --no-tls
+      - --no-dtls

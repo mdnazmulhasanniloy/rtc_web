@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+  SYSTEM
+}
+
+enum CallType {
+  AUDIO
+  VIDEO
+}
+
+enum CallStatus {
+  MISSED
+  DECLINED
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id String @id @default(cuid())
+  name String
+  username String @unique
+  email String @unique
+  passwordHash String
+  avatar String?
+  bio String? @default("Available to chat")
+  createdAt DateTime @default(now())
+  memberships ConversationMember[]
+  messages Message[]
+  initiatedCalls Call[] @relation("Caller")
+  receivedCalls Call[] @relation("Callee")
+}
+
+model Conversation {
+  id String @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  members ConversationMember[]
+  messages Message[]
+  calls Call[]
+}
+
+model ConversationMember {
+  userId String
+  conversationId String
+  lastReadAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  @@id([userId, conversationId])
+  @@index([userId])
+}
+
+model Message {
+  id String @id @default(cuid())
+  body String
+  type MessageType @default(TEXT)
+  senderId String
+  conversationId String
+  createdAt DateTime @default(now())
+  editedAt DateTime?
+  sender User @relation(fields: [senderId], references: [id])
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  @@index([conversationId, createdAt])
+}
+
+model Call {
+  id String @id @default(cuid())
+  type CallType
+  status CallStatus
+  startedAt DateTime @default(now())
+  endedAt DateTime?
+  duration Int @default(0)
+  callerId String
+  calleeId String
+  conversationId String
+  caller User @relation("Caller", fields: [callerId], references: [id])
+  callee User @relation("Callee", fields: [calleeId], references: [id])
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  @@index([callerId, startedAt])
+  @@index([calleeId, startedAt])
+}

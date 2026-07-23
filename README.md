@@ -8,6 +8,9 @@ A responsive realtime chat and calling application built with Next.js, TypeScrip
 - Searchable user discovery and one-to-one conversations
 - Optimistic realtime messages, typing, presence, read receipts, and room isolation
 - Audio/video call UI and WebRTC signaling events
+- In-call screen sharing for video calls
+- Editable profiles with persistent, compressed avatar uploads
+- Built-in emoji picker for messages
 - Call history backed by Prisma
 - Cursor-paginated message API and indexed database access
 - Responsive desktop/mobile experience with accessible controls
@@ -86,6 +89,8 @@ docker compose --env-file .env.production logs -f
 ```
 
 Open `https://chat.nazmulhasan.dev`. Certbot checks renewal every 12 hours, while Nginx reloads periodically to pick up renewed certificates. The database is stored in the `relay_data` Docker volume and survives container rebuilds.
+Uploaded profile images are stored under `/data/uploads` in the same persistent
+`relay_data` volume.
 
 Before exposing the service publicly, verify:
 

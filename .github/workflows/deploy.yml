@@ -94,3 +94,4 @@ jobs:
 
       - name: Verify production health
         run: curl --fail --retry 12 --retry-delay 5 --retry-all-errors https://chat.nazmulhasan.dev/health
+

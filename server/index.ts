@@ -1,7 +1,10 @@
 import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
 import { createServer } from "node:http";
-import { createHmac } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
+import { writeFile } from "node:fs/promises";
+import { mkdirSync } from "node:fs";
+import path from "node:path";
 import { Server } from "socket.io";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
@@ -19,13 +22,18 @@ if (process.env.NODE_ENV === "production" && (!configuredSecret || configuredSec
 const secret = configuredSecret || "development-secret-change-me";
 const corsOrigin = process.env.NODE_ENV === "production" ? origin.split(",") : true;
 const io = new Server(server, { cors: { origin: corsOrigin, credentials: true }, transports: ["websocket", "polling"] });
-app.use(cors({ origin: corsOrigin, credentials: true })); app.use(express.json({ limit: "1mb" }));
+const uploadDir = process.env.UPLOAD_DIR || path.resolve("uploads");
+mkdirSync(uploadDir, { recursive: true });
+app.use(cors({ origin: corsOrigin, credentials: true }));
+app.use("/uploads", express.static(uploadDir, { immutable: true, maxAge: "30d", index: false }));
+app.use(express.json({ limit: "3mb" }));
 
 type Authed = Request & { userId?: string };
 const auth = (req: Authed, res: Response, next: NextFunction) => { try { const token = req.headers.authorization?.replace("Bearer ", ""); if (!token) return res.status(401).json({ error: "Authentication required" }); req.userId = (jwt.verify(token, secret) as { sub: string }).sub; next(); } catch { return res.status(401).json({ error: "Invalid or expired session" }); } };
 const registerSchema = z.object({ name:z.string().min(2).max(60), username:z.string().min(3).max(24).regex(/^[a-z0-9_]+$/), email:z.string().email(), password:z.string().min(8).max(72) });
 app.get("/health", (_req,res) => res.json({ status:"ok" }));
 app.get("/auth/me",auth,async(req:Authed,res,next)=>{try{const user=await prisma.user.findUnique({where:{id:req.userId},select:{id:true,name:true,email:true,username:true,avatar:true,bio:true}});if(!user)return res.status(404).json({error:"User not found"});res.json(user)}catch(e){next(e)}});
+app.patch("/auth/me",auth,async(req:Authed,res,next)=>{try{const data=z.object({name:z.string().trim().min(2).max(60),bio:z.string().trim().max(160),avatarData:z.string().max(2_800_000).optional()}).parse(req.body);let avatar:string|undefined;if(data.avatarData){const match=/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/.exec(data.avatarData);if(!match)return res.status(400).json({error:"Invalid profile image"});const buffer=Buffer.from(match[2],"base64");if(buffer.length>2_000_000)return res.status(400).json({error:"Profile image must be smaller than 2 MB"});const extension=match[1]==="jpeg"?"jpg":match[1];const filename=`${req.userId}-${randomUUID()}.${extension}`;await writeFile(path.join(uploadDir,filename),buffer,{flag:"wx"});avatar=`/uploads/${filename}`}const user=await prisma.user.update({where:{id:req.userId},data:{name:data.name,bio:data.bio,avatar},select:{id:true,name:true,email:true,username:true,avatar:true,bio:true}});res.json(user)}catch(e){next(e)}});
 app.get("/turn-credentials",auth,(req:Authed,res)=>{const host=process.env.TURN_HOST,sharedSecret=process.env.TURN_SHARED_SECRET;if(!host||!sharedSecret)return res.status(503).json({error:"TURN server is not configured"});const expires=Math.floor(Date.now()/1000)+86400;const username=`${expires}:${req.userId}`;const credential=createHmac("sha1",sharedSecret).update(username).digest("base64");res.json({iceServers:[{urls:`stun:${host}:3478`},{urls:[`turn:${host}:3478?transport=udp`,`turn:${host}:3478?transport=tcp`],username,credential}]})});
 app.post("/auth/register", async (req,res,next) => { try { const data=registerSchema.parse(req.body); const email=data.email.toLowerCase(); const username=data.username.toLowerCase(); const exists=await prisma.user.findFirst({where:{OR:[{email},{username}]}}); if(exists) return res.status(409).json({error:"Email or username already exists"}); const passwordHash=await bcrypt.hash(data.password,12); const user=await prisma.user.create({data:{name:data.name,email,username,passwordHash},select:{id:true,name:true,email:true,username:true,avatar:true,bio:true}}); const token=jwt.sign({},secret,{subject:user.id,expiresIn:"7d"}); res.status(201).json({user,token}); } catch(e){next(e)} });
 app.post("/auth/login", async(req,res,next)=>{try{const {email,password}=z.object({email:z.string().email(),password:z.string()}).parse(req.body);const user=await prisma.user.findUnique({where:{email:email.toLowerCase()}});if(!user||!await bcrypt.compare(password,user.passwordHash))return res.status(401).json({error:"Incorrect email or password"});const token=jwt.sign({},secret,{subject:user.id,expiresIn:"7d"});res.json({token,user:{id:user.id,name:user.name,username:user.username,email:user.email,avatar:user.avatar}})}catch(e){next(e)}});

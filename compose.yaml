@@ -23,6 +23,7 @@ services:
       DATABASE_URL: file:/data/relay.db
       WEB_ORIGIN: https://chat.nazmulhasan.dev
       TURN_HOST: turn.chat.nazmulhasan.dev
+      UPLOAD_DIR: /data/uploads
       PORT: "4000"
     volumes:
       - relay_data:/data
